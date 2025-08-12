@@ -1,12 +1,16 @@
 require('dotenv').config();
 const { Client } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const qrcode = require('qrcode');
 const axios = require('axios');
+const express = require('express');
+
+let latestQR = '';
 
 const client = new Client();
 
-client.on('qr', qr => {
-    qrcode.generate(qr, { small: true });
+client.on('qr', async qr => {
+    latestQR = await qrcode.toDataURL(qr); // lo guardamos como imagen base64
+    console.log('🔗 Escaneá el QR en: https://TU-APP.onrender.com/qr');
 });
 
 client.on('ready', () => {
@@ -15,7 +19,7 @@ client.on('ready', () => {
 
 client.on('message', async msg => {
     const userText = msg.body;
-    const number = msg.from.split('@')[0]
+    const number = msg.from.split('@')[0];
     console.log(`📩 Mensaje de ${number}: ${userText}`);
 
     try {
@@ -33,3 +37,16 @@ client.on('message', async msg => {
 });
 
 client.initialize();
+
+// Servidor web para mostrar el QR
+const app = express();
+app.get('/qr', (req, res) => {
+    if (!latestQR) {
+        return res.send('Aún no hay un QR generado.');
+    }
+    res.send(`<img src="${latestQR}" />`);
+});
+
+app.listen(process.env.PORT || 3000, () => {
+    console.log(`🌐 Servidor iniciado en puerto ${process.env.PORT || 3000}`);
+});
